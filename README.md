@@ -1,6 +1,6 @@
 <p align="center">
   <strong>Windows</strong><br><br>
-  <a href="https://www.youtube.com/watch?v=_9cLWZtqm7k" target="_blank" rel="noopener noreferrer">
+  <a href="https://www.youtube.com/watch?v=_9cLWZtqm7k" target="_blank">
     <img src="https://img.youtube.com/vi/_9cLWZtqm7k/0.jpg" alt="WINDOWS">
   </a>
 </p>
