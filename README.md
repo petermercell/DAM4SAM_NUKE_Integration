@@ -6,6 +6,7 @@
 </p>
 
 ---
+> To open the video in a new tab, right-click the thumbnail and select "Open link in new tab."
 
 ### 🔧 Important Configuration Changes
 
