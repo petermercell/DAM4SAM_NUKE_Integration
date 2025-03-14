@@ -1,0 +1,79 @@
+#! C:/Program Files/Nuke15.1v5/nuke-15.1.5.dll -nx
+version 15.1 v5
+define_window_layout_xml {<?xml version="1.0" encoding="UTF-8"?>
+<layout version="1.0">
+    <window x="0" y="0" w="2557" h="1360" screen="0">
+        <splitter orientation="1">
+            <split size="40"/>
+            <dock id="" hideTitles="1" activePageId="Toolbar.1">
+                <page id="Toolbar.1"/>
+            </dock>
+            <split size="1894" stretch="1"/>
+            <splitter orientation="2">
+                <split size="774"/>
+                <dock id="" activePageId="Viewer.1">
+                    <page id="Viewer.1"/>
+                </dock>
+                <split size="544"/>
+                <dock id="" activePageId="DAG.1" focus="true">
+                    <page id="DAG.1"/>
+                    <page id="Curve Editor.1"/>
+                    <page id="DopeSheet.1"/>
+                </dock>
+            </splitter>
+            <split size="615"/>
+            <dock id="" activePageId="Properties.1">
+                <page id="Properties.1"/>
+                <page id="uk.co.thefoundry.backgroundrenderview.1"/>
+                <page id="Scenegraph.1"/>
+            </dock>
+        </splitter>
+    </window>
+</layout>
+}
+Root {
+ inputs 0
+ name C:/Users/WORKSTATION/Desktop/DAM4SAM_WIN.nk
+ format "2048 1556 0 0 2048 1556 1 2K_Super_35(full-ap)"
+ proxy_type scale
+ proxy_format "1024 778 0 0 1024 778 1 1K_Super_35(full-ap)"
+ colorManagement Nuke
+ workingSpaceLUT linear
+ monitorLut sRGB
+ monitorOutLUT rec709
+ int8Lut sRGB
+ int16Lut sRGB
+ logLut Cineon
+ floatLut linear
+}
+Viewer {
+ inputs 0
+ frame 1
+ frame_range 1-100
+ monitorOutNDISenderName "NukeX - untitled - Viewer1"
+ monitorOutOutputTransform rec709
+ name Viewer1
+ xpos -38
+ ypos 11
+}
+NoOp {
+ inputs 0
+ name DAM4SAM2
+ tile_color 0xffff00ff
+ selected true
+ xpos -44
+ ypos -122
+ addUserKnob {20 User l DAM4SAM}
+ addUserKnob {26 ""}
+ addUserKnob {26 _1 l "" +STARTLINE T "USE PNG sequence"}
+ addUserKnob {26 ""}
+ addUserKnob {2 input l INPUT}
+ input C:/Users/WORKSTATION/Desktop/TEST002
+ addUserKnob {2 output l OUTPUT}
+ output C:/Users/WORKSTATION/Desktop/TEST001_OUT
+ addUserKnob {26 ""}
+ addUserKnob {22 update l UpdatePath T "# CODE from Theo-SAMINADIN-td\n\nimport os\n\nclass InputInfos :\n    read = None\n    path = None\n    original_fps = None\n    bits = None\n    \n    @classmethod\n    def getInputInfos(cls):\n        f = nuke.thisNode().dependencies()\n\n        for i in f:\n            cls.read = i\n\n        # Get file path\n        try :\n            cls.path = cls.read.knob('file').getValue()\n        except : \n            cls.path = ''\n\n        # Get metadatas\n        ## get input fps\n        try :\n            cls.original_fps = int(cls.read.metadata()\['input/frame_rate'])  \n        except :\n            cls.original_fps = nuke.Root()\['fps'].value()  \n\n        ## Get input bit depth\n        # Look for bitsperchannel into the metadatas \n        try : \n            cls.bits = cls.read.metadata()\['input/bitsperchannel']   \n        except :\n            # Interpreting bit depth depending on the format\n            nuke.tprint(\"No Bit Depth information in the input metadatas. Interpreting it from the input extension.\")\n\n            if cls.path.endswith(\"jpg\") or cls.path.endswith(\"jpeg\") or cls.path.endswith(\"png\") or cls.path.endswith(\"tiff\"):\n                cls.bits = \"8-bit fixed\"\n            elif cls.path.endswith(\"exr\") :\n                cls.bits = \"32-bit float\"\n            else :\n                TypeError(\"Cannot interpret bit depth from unsupported input format.\")\n       \n\nimport os\n\ndef UpdatePath():\n    InputInfos.getInputInfos()\n    FilePath = InputInfos.path\n    #print(\"Original Path:\", FilePath)\n\n    # Remove last part (%04d.png)\n    DirPath = os.path.dirname(FilePath)\n    \n    #print(\"Updated Path:\", DirPath)\n    nuke.thisNode().knob('input').setValue(DirPath)\n\nUpdatePath()" +STARTLINE}
+ addUserKnob {22 dam4sam l DAM4SAM -STARTLINE T "import subprocess\nimport threading\nimport nuke\nimport os\nimport re\n\n# Get the current Nuke node\nref_node = nuke.thisNode()\n\n# Get the input and output paths from the node parameters\nimage_dir = ref_node\['input'].getValue()\noutput_path = ref_node\['output'].getValue()\noutput_path_new = output_path + \"/%04d.png\"\n\n\ndef extract_frame_number(filename):\n    \"\"\"Extracts frame number from a filename. Modify based on your naming convention.\"\"\"\n    import re\n    match = re.search(r'(\\d+)(?=\\.\\w+\$)', filename)\n    return int(match.group(0)) if match else None\n\ndef create_read(output_path_new):\n    output_dir = os.path.dirname(output_path_new)\n    file_extension = os.path.splitext(output_path_new)\[-1]\n\n    frames = \[f for f in sorted(os.listdir(output_dir)) if f.endswith(file_extension)]\n    if not frames:\n        nuke.message(f\"No frames with extension \{file_extension\} found in the output directory.\")\n        return False\n\n    first_frame_number = extract_frame_number(frames\[0])\n    last_frame_number = extract_frame_number(frames\[-1])\n\n    if first_frame_number is None or last_frame_number is None:\n        nuke.message(\"Could not extract frame numbers from filenames.\")\n        return False\n\n    read_node = nuke.createNode(\"Read\")\n    read_node\[\"file\"].setValue(output_path_new)\n    read_node\[\"first\"].setValue(first_frame_number)\n    read_node\[\"last\"].setValue(last_frame_number)\n    read_node\[\"reload\"].execute()\n\n    # Position the Read node 50px below ref_node\n    x_pos = ref_node.xpos()\n    y_pos = ref_node.ypos() + 150\n    read_node.setXYpos(x_pos, y_pos)\n\n    # Create a Shuffle node connected to the Read node\n    shuffle_node = nuke.createNode(\"Shuffle\")\n\n    # Connect the Shuffle node to the Read node\n    shuffle_node.setInput(0, read_node)\n\n    # Set the Shuffle node to copy Red to all RGBA channels\n    shuffle_node\[\"in\"].setValue(\"red\")  # Set input to red\n    shuffle_node\[\"red\"].setValue(\"red\")\n    shuffle_node\[\"green\"].setValue(\"red\")\n    shuffle_node\[\"blue\"].setValue(\"red\")\n    shuffle_node\[\"alpha\"].setValue(\"red\")\n\n    # Position the Shuffle node 50px below the Read node\n    shuffle_node.setXYpos(x_pos, y_pos + 150)\n\n    # Find the existing Viewer node\n    viewer_nodes = \[n for n in nuke.allNodes(\"Viewer\")]\n    \n    if viewer_nodes:\n        viewer_node = viewer_nodes\[0]  # Use the first found Viewer node\n        viewer_node.setInput(0, shuffle_node)  # Connect the Viewer to the Shuffle node\n    else:\n        nuke.message(\"No existing Viewer node found in the script.\")\n\n    return True\n\n\n# Define paths\nbatch_script = r'C:/Users/WORKSTATION/temp_script.bat'\nconda_activate = r'C:/Users/%USERNAME%/miniconda3/Scripts/activate.bat'\nconda_env = \"DAM4SAM\"  # Your Conda environment name\nscript_dir = r'C:/Users/WORKSTATION/.nuke/DAM4SAM'\ntest_dir = image_dir\noutput_dir = output_path\nimformat = r'png'\n\n# Create the batch script\nwith open(batch_script, 'w') as f:\n    f.write(f'@echo off\\n')\n    f.write(f'call \"\{conda_activate\}\"\\n')  # Activate Conda\n    f.write(f'call conda activate \{conda_env\}\\n')  # Activate DAM4SAM environment\n    f.write(f'cd \"\{script_dir\}\"\\n')\n    f.write(f'python run_bbox_example.py --dir \"\{test_dir\}\" --ext \"\{imformat\}\" --output_dir \"\{output_dir\}\"\\n')\n    f.write(f'exit\\n')  # Automatically closes the process when done\n\n# Function to run the script\ndef run_script():\n    process = subprocess.Popen(batch_script, creationflags=subprocess.CREATE_NO_WINDOW, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)\n    process.wait()  # Wait for script to finish\n\n# Run the script in a thread\nscript_thread = threading.Thread(target=run_script)\nscript_thread.start()\nscript_thread.join()  # Wait for thread to finish\n\n# Now that the thread is finished, create the Read node on the main thread\ncreate_read(output_path_new)"}
+ addUserKnob {22 getread l GetRead -STARTLINE T "import nuke\nimport os\n\n# Get the current Nuke node\nref_node = nuke.thisNode()\n\n# Get the input and output paths from the node parameters\noutput_path = ref_node\['output'].getValue()\noutput_path_new = output_path + \"/%04d.png\"\n\n\ndef create_read(output_path_new):\n\n    # Extract the directory, base name, and extension from the output path\n    output_dir = os.path.dirname(output_path_new)\n    base_name = os.path.basename(output_path_new)\n    file_extension = os.path.splitext(output_path_new)\[-1]  # Extract the file extension (e.g., .png, .jpg, etc.)\n\n    # Identify the actual first frame number from the files in the folder\n    frames = \[f for f in sorted(os.listdir(output_dir)) if f.endswith(file_extension)]\n    if not frames:\n        nuke.message(f\"No frames with extension \{file_extension\} found in the output directory.\")\n        return False\n\n    # Extract the frame numbers\n    def extract_frame_number(filename):\n        return int(os.path.splitext(filename)\[0])  # Remove extension and convert to int\n\n    first_frame_file = frames\[0]\n    first_frame_number = extract_frame_number(first_frame_file)  # Extract first frame number\n\n    last_frame_file = frames\[-1]\n    last_frame_number = extract_frame_number(last_frame_file)  # Extract last frame number\n\n    # Automatically create a Read node with the output path\n    read_node = nuke.createNode(\"Read\")\n    read_node\[\"file\"].setValue(output_path_new)\n    read_node\[\"first\"].setValue(first_frame_number)\n    read_node\[\"last\"].setValue(last_frame_number)\n    read_node\[\"reload\"].execute()\n\n    return True\n\n\ncreate_read(output_path_new)\n"}
+ addUserKnob {26 ""}
+}
